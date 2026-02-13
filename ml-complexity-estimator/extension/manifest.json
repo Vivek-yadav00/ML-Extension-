@@ -1,0 +1,43 @@
+{
+    "manifest_version": 3,
+    "name": "ML Complexity Estimator",
+    "version": "1.1",
+    "description": "Analyzes ML code complexity on GitHub and Jupyter notebooks with detailed insights.",
+    "permissions": [
+        "activeTab",
+        "scripting"
+    ],
+    "host_permissions": [
+        "https://github.com/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://colab.research.google.com/*",
+        "https://*.jupyter.org/*",
+        "https://kaggle.com/*",
+        "https://www.kaggle.com/*"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": "icon.png"
+    },
+    "icons": {
+        "48": "icon.png",
+        "128": "icon.png"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://github.com/*",
+                "http://localhost/*",
+                "http://127.0.0.1/*",
+                "https://colab.research.google.com/*",
+                "https://*.jupyter.org/*",
+                "https://kaggle.com/*",
+                "https://www.kaggle.com/*"
+            ],
+            "js": [
+                "contentScript.js"
+            ]
+        }
+    ]
+}
