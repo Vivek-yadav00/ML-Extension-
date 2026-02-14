@@ -313,6 +313,71 @@ class MLAnalyzer {
             }
         }
 
+        // 4. Add Imported but Unused Models (User Request: "all thing comes")
+        // This ensures that if a user imports StandardScaler but hasn't used it yet, it still shows up.
+        for (const [name, module] of Object.entries(importedNames)) {
+            // Skip if we've already analyzed it as an instantiation
+            // We check generic name, as line number doesn't exist for import-only
+            // To do this effectively, we need to know if we saw this NAME in instantiations.
+
+            // Check if ANY instantiation matched this name
+            const alreadyUsed = models.some(m => m.model_name === name);
+            if (alreadyUsed) continue;
+
+            const modelData = {
+                name: name,
+                type: this.formatName(name),
+                framework: 'unknown', // Will detect below
+                line: 'Imported',
+                params: {},
+                source: module
+            };
+
+            // Detect framework for this import
+            for (const [framework, keywords] of Object.entries(this.frameworks)) {
+                if (keywords.some(k => module.toLowerCase().includes(k))) {
+                    modelData.framework = framework;
+                    break;
+                }
+            }
+
+            // Filter non-ML imports (noise reduction)
+            const ignoredFrameworks = ['matplotlib', 'seaborn', 'numpy', 'pandas', 'scipy', 'statsmodels'];
+            const isExplicitML = modelData.source && (
+                modelData.source.includes('sklearn') ||
+                modelData.source.includes('xgboost') ||
+                modelData.source.includes('tensorflow') ||
+                modelData.source.includes('keras') ||
+                modelData.source.includes('torch')
+            );
+
+            // knownModels override
+            if (this.knownModels[name]) {
+                modelData.type = this.knownModels[name][0];
+                modelData.framework = this.knownModels[name][1];
+            } else if (!isExplicitML && ignoredFrameworks.includes(modelData.framework)) {
+                continue;
+            }
+
+            // If we still don't know the framework and it's not a known model, maybe skip?
+            // But if it's from 'sklearn.metrics', we want it.
+            if (modelData.framework === 'unknown' && !modelData.source.includes('sklearn')) {
+                continue;
+            }
+
+            const analysis = this.estimateComplexity(modelData, {}, dataOps, modelData.source);
+
+            models.push({
+                framework: modelData.framework,
+                model_type: modelData.type,
+                model_name: modelData.name,
+                line_number: 'Imported',
+                complexity: analysis.complexity,
+                description: analysis.description,
+                file_analysis: { ...analysis.file_analysis, estimated_scale: "Imported but not detected in usage" }
+            });
+        }
+
         return {
             filename,
             detected_frameworks: frameworks,
